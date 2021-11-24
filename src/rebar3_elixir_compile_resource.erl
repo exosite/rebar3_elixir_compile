@@ -56,22 +56,15 @@ make_vsn(_) ->
     {error, "Replacing version of type elixir not supported."}.
 
 
-fetch_and_compile(State, Dir, {elixir, Name, {git, _Url, _Stuff} = GitTuple} = _Pkg) ->
-    Dir = filename:join([filename:absname("_elixir_build"), Name]),
-    rebar_git_resource:download(Dir, GitTuple, State),
-    State1 = rebar3_elixir_compile_util:add_elixir(State),
-    State2 = rebar_state:set(State1, libs_target_dir, default),
-    BaseDir = filename:join(rebar_dir:root_dir(State2), "_elixir_build/"),
-    BaseDirState = rebar_state:set(State2, elixir_base_dir, BaseDir),
-    Env = rebar_state:get(BaseDirState, mix_env),
-    AppDir = filename:join(BaseDir, Name),
-    rebar3_elixir_compile_util:compile_libs(BaseDirState),
-    LibsDir = rebar3_elixir_compile_util:libs_dir(AppDir, Env),
-    rebar3_elixir_compile_util:transfer_libs(rebar_state:set(BaseDirState, libs_target_dir, Dir), [Name], LibsDir).
-
-fetch_and_compile(State, Dir, {elixir, Name, _Vsn} = Pkg) ->
-    CDN = cdn(State),
-    fetch(Pkg, CDN),
+fetch_and_compile(State, Dir, {elixir, Name, VsnOrGitTuple} = Pkg) ->
+    case VsnOrGitTuple of
+        {git, _Url, _Stuff} = GitTuple ->
+            Dir = filename:join([filename:absname("_elixir_build"), Name]),
+            rebar_git_resource:download(Dir, GitTuple, State);
+        _Vsn ->
+            CDN = cdn(State),
+            fetch(Pkg, CDN)
+    end,
     State1 = rebar3_elixir_compile_util:add_elixir(State),
     State2 = rebar_state:set(State1, libs_target_dir, default),
     BaseDir = filename:join(rebar_dir:root_dir(State2), "_elixir_build/"),
